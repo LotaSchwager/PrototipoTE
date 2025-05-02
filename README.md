@@ -23,8 +23,15 @@ Luego instalar las dependencias, es **importante** el ```--force``` debidos a pr
 npm install --force
 ```
 
-Como ejecutar el prototipo.
+Como ejecutar el prototipo en modo dev.
 
 ```shell
 npm run dev
+```
+
+Como ejecutar el prototipo modo usuario
+
+```shell
+npm run build
+npm run start
 ```
