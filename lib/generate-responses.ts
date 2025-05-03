@@ -1,10 +1,10 @@
-import { generateWithOllama, getAvailableModels } from "./ollama-client"
+import { generateWithOllama, getAvailableModels } from "./ollama-client";
 
 // Mensaje de sistema para todos los modelos
-const SYSTEM_PROMPT = "Eres un asistente para una universidad llamada Pontificia Universidad Catolica de Valparaiso"
+const SYSTEM_PROMPT = "Eres un asistente para una universidad llamada Pontificia Universidad Catolica de Valparaiso";
 
 // Temperatura para la generación
-const TEMPERATURE = 0.7
+const TEMPERATURE = 0.7;
 
 /**
  * Genera respuestas para un prompt usando los modelos configurados
@@ -12,10 +12,10 @@ const TEMPERATURE = 0.7
 export async function generateResponses(prompt: string): Promise<string[]> {
   try {
     // Obtener modelos disponibles
-    const availableModels = await getAvailableModels()
+    const availableModels = await getAvailableModels();
 
     // Filtrar solo los modelos que están disponibles
-    const modelsToUse = availableModels.filter((model) => model.isAvailable)
+    const modelsToUse = availableModels.filter((model) => model.isAvailable);
 
     // Si no hay modelos disponibles, devolver mensaje de error
     if (modelsToUse.length === 0) {
@@ -23,36 +23,41 @@ export async function generateResponses(prompt: string): Promise<string[]> {
         "Error: No hay modelos disponibles. Por favor verifica la conexión con Ollama.",
         "Error: No hay modelos disponibles. Por favor verifica la conexión con Ollama.",
         "Error: No hay modelos disponibles. Por favor verifica la conexión con Ollama.",
-      ]
+      ];
     }
 
-    // Generar respuestas en paralelo
-    const responsePromises = modelsToUse.map((model) =>
-      generateWithOllama({
+    // Generar respuestas en paralelo y medir el tiempo de cada una
+    const responsePromises = modelsToUse.map(async (model) => {
+      const startTime = performance.now(); // Inicio del tiempo
+      const response = await generateWithOllama({
         model: model.name,
         prompt,
         system: SYSTEM_PROMPT,
         temperature: TEMPERATURE,
-      }),
-    )
+      });
+      const endTime = performance.now(); // Fin del tiempo
+      const executionTime = (endTime - startTime).toFixed(2); // Tiempo en milisegundos
+      console.log(`Modelo: ${model.name}, Tiempo de ejecución: ${executionTime} ms`);
+      return response;
+    });
 
     // Esperar a que todas las respuestas estén listas
-    const responses = await Promise.all(responsePromises)
+    const responses = await Promise.all(responsePromises);
 
     // Si hay menos de 3 modelos disponibles, rellenar con mensajes
     while (responses.length < 3) {
-      responses.push("Este modelo no está disponible actualmente. Por favor verifica la conexión con Ollama.")
+      responses.push("Este modelo no está disponible actualmente. Por favor verifica la conexión con Ollama.");
     }
 
     // Limitar a 3 respuestas en caso de que haya más modelos
-    return responses.slice(0, 3)
+    return responses.slice(0, 3);
   } catch (error) {
-    console.error("Error al generar respuestas:", error)
+    console.error("Error al generar respuestas:", error);
     return [
       "Error al generar respuesta. Por favor intenta de nuevo más tarde.",
       "Error al generar respuesta. Por favor intenta de nuevo más tarde.",
       "Error al generar respuesta. Por favor intenta de nuevo más tarde.",
-    ]
+    ];
   }
 }
 
@@ -61,11 +66,11 @@ export async function generateResponses(prompt: string): Promise<string[]> {
  */
 export async function getModelInfo() {
   try {
-    const models = await getAvailableModels()
-    return models
+    const models = await getAvailableModels();
+    return models;
   } catch (error) {
-    console.error("Error al obtener información de modelos:", error)
-    return []
+    console.error("Error al obtener información de modelos:", error);
+    return [];
   }
 }
 
