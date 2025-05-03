@@ -137,7 +137,7 @@ export interface OllamaGenerateParams {
     const configuredModels = [
       { name: "hf.co/Ainxz/phi3.5-pucv-gguf", displayName: "Phi 3.5 (3.8B)" },
       { name: "hf.co/Ainxz/llama3.2-pucv-gguf", displayName: "Llama 3.2 (1B)" },
-      { name: "hf.co/Ainxz/qwen2.5-pucv:latest", displayName: "Qwen 2.5 (0.5B)" },
+      { name: "hf.co/Ainxz/qwen2.5-pucv-gguf", displayName: "Qwen 2.5 (0.5B)" },
     ]
   
     const modelsWithAvailability = await Promise.all(
