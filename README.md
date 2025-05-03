@@ -25,9 +25,9 @@ npm install --force
 Tambien es importante instalar [Ollama](https://ollama.com/) e instalar los tres modelos con fine-tunning utilizando Powershell o CMD.
 
 ```shell
-ollama run hf.co/Ainxz/qwen2.5-pucv-gguf
-ollama run hf.co/Ainxz/llama3.2-pucv-gguf
-ollama run hf.co/Ainxz/phi3.5-pucv-gguf
+ollama pull hf.co/Ainxz/qwen2.5-pucv-gguf
+ollama pull hf.co/Ainxz/llama3.2-pucv-gguf
+ollama pull hf.co/Ainxz/phi3.5-pucv-gguf
 ```
 
 Teniendo el prototipo con ```node_modules``` y los modelos instalados con ollama, recien se puede inicializar el prototipo.
