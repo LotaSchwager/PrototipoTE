@@ -1,6 +1,16 @@
+import { exportToBackend } from "./backend-client"
+
 interface ResponseOption {
   modelo: string
   seleccionado: boolean
+  // Campos adicionales para métricas
+  created_at?: string
+  total_duration?: number
+  load_duration?: number
+  prompt_eval_count?: number
+  prompt_eval_duration?: number
+  eval_count?: number
+  eval_duration?: number
 }
 
 interface Message {
@@ -11,6 +21,8 @@ interface Message {
   responseData?: {
     [key: string]: ResponseOption
   }
+  // Almacenar los datos completos de los modelos para exportación
+  modelResults?: any[]
 }
 
 export async function exportConversation(conversation: Message[]): Promise<void> {
@@ -26,23 +38,16 @@ export async function exportConversation(conversation: Message[]): Promise<void>
         selectedResponseIndex: msg.selectedResponse,
         selectedResponseContent: msg.responses[msg.selectedResponse as number],
         responseData: msg.responseData,
+        // Incluir los datos completos de los modelos si están disponibles
+        modelResults: msg.modelResults || [],
       })),
     }
 
-    // En un entorno real, aquí se enviaría a un backend
-    // Por ahora, simulamos la llamada al backend
+    // Enviar datos al backend
     console.log("Enviando datos al backend:", exportData)
+    const success = await exportToBackend(exportData)
 
-    // Simulamos una llamada POST a un backend local
-    const response = await fetch("http://localhost:3001/api/save-conversation", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(exportData),
-    })
-
-    if (!response.ok) {
+    if (!success) {
       throw new Error("Error al exportar la conversación")
     }
 

@@ -7,15 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { generateResponses, getModelInfo } from "@/lib/generate-responses"
+import { generateResponses } from "@/lib/generate-responses"
 import { exportConversation } from "@/lib/export-conversation"
 import { PUCVLogo } from "@/components/pucv-logo"
 import { SuggestedQuestions } from "@/components/suggested-questions"
-import { ModelStatus } from "@/components/model-status"
+import { BackendStatus } from "@/components/backend-status"
+import type { ModelResult } from "@/lib/backend-client"
 
 interface ResponseOption {
   modelo: string
   seleccionado: boolean
+  // Campos adicionales para métricas
+  created_at?: string
+  total_duration?: number
+  load_duration?: number
+  prompt_eval_count?: number
+  prompt_eval_duration?: number
+  eval_count?: number
+  eval_duration?: number
 }
 
 interface Message {
@@ -25,14 +34,9 @@ interface Message {
   selectedResponse?: number
   responseData?: {
     [key: string]: ResponseOption
-  },
-  modelNames: string[]
-}
-
-interface ModelInfo {
-  name: string
-  displayName: string
-  isAvailable: boolean
+  }
+  // Almacenar los datos completos de los modelos para exportación
+  modelResults?: ModelResult[]
 }
 
 export default function ChatbotPage() {
@@ -42,24 +46,8 @@ export default function ChatbotPage() {
   const [canExport, setCanExport] = useState(false)
   const [hasExported, setHasExported] = useState(false)
   const [activeTab, setActiveTab] = useState("chat")
-  const [models, setModels] = useState<ModelInfo[]>([])
-  const chatContainerRef = useRef < HTMLDivElement > (null)
-  // const theme = "light" // Siempre modo claro
-  // const { theme, setTheme } = useTheme()
-
-  // Cargar información de modelos al iniciar
-  useEffect(() => {
-    async function loadModelInfo() {
-      try {
-        const modelInfo = await getModelInfo()
-        setModels(modelInfo)
-      } catch (error) {
-        console.error("Error al cargar información de modelos:", error)
-      }
-    }
-
-    loadModelInfo()
-  }, [])
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const theme = "light" // Siempre modo claro
 
   // Check if export is possible (5+ complete Q&A)
   useEffect(() => {
@@ -85,14 +73,31 @@ export default function ChatbotPage() {
 
     setIsLoading(true)
     try {
+      // Obtener las respuestas del backend
       const responses = await generateResponses(prompt)
 
-      // Crear objeto de datos de respuesta con información de modelos
-      const availableModels = models.filter((model) => model.isAvailable)
-      const modelNames =
-        availableModels.length >= 3
-          ? availableModels.slice(0, 3).map((m) => m.name)
-          : [...availableModels.map((m) => m.name), ...Array(3 - availableModels.length).fill("no disponible")]
+      // Obtener los datos completos de los modelos (simulado por ahora)
+      // En una implementación real, estos datos vendrían del backend
+      const modelResults: ModelResult[] = [
+        {
+          model: "llama3.2",
+          message: responses[0],
+          total_duration: Math.floor(Math.random() * 5000),
+          error: responses[0].includes("Error") ? "Error simulado" : "",
+        },
+        {
+          model: "phi3.5",
+          message: responses[1],
+          total_duration: Math.floor(Math.random() * 5000),
+          error: responses[1].includes("Error") ? "Error simulado" : "",
+        },
+        {
+          model: "qwen2.5",
+          message: responses[2],
+          total_duration: Math.floor(Math.random() * 5000),
+          error: responses[2].includes("Error") ? "Error simulado" : "",
+        },
+      ]
 
       setConversation([
         ...conversation,
@@ -101,7 +106,7 @@ export default function ChatbotPage() {
           responses,
           tempSelectedResponse: undefined,
           selectedResponse: undefined,
-          modelNames,
+          modelResults, // Guardar los datos completos para exportación
         },
       ])
       setPrompt("")
@@ -132,13 +137,23 @@ export default function ChatbotPage() {
       // Create the response data structure
       const responseData: { [key: string]: ResponseOption } = {}
 
-      // Usar los nombres de modelos reales si están disponibles
-      const modelNames = message.modelNames || ["modelo1", "modelo2", "modelo3"]
+      // Usar los datos de los modelos si están disponibles
+      const modelResults = message.modelResults || []
 
       message.responses.forEach((_, index) => {
+        const modelResult = modelResults[index] || { model: `modelo${index + 1}` }
+
         responseData[`opcion ${index + 1}`] = {
-          modelo: modelNames[index] || `modelo${index + 1}`,
+          modelo: modelResult.model,
           seleccionado: index === selectedIndex,
+          // Incluir métricas adicionales si están disponibles
+          created_at: modelResult.created_at,
+          total_duration: modelResult.total_duration,
+          load_duration: modelResult.load_duration,
+          prompt_eval_count: modelResult.prompt_eval_count,
+          prompt_eval_duration: modelResult.prompt_eval_duration,
+          eval_count: modelResult.eval_count,
+          eval_duration: modelResult.eval_duration,
         }
       })
 
@@ -168,6 +183,7 @@ export default function ChatbotPage() {
 
   const handleUseQuestion = (question: string) => {
     setPrompt(question)
+    // No cambiamos automáticamente a la pestaña de chat aquí
     // El cambio ocurrirá cuando el usuario presione "Consultar"
   }
 
@@ -216,8 +232,8 @@ export default function ChatbotPage() {
             <TabsTrigger value="questions" className={activeTab === "questions" ? colors.highlight : ""}>
               Preguntas Sugeridas
             </TabsTrigger>
-            <TabsTrigger value="models" className={activeTab === "models" ? colors.highlight : ""}>
-              Modelos
+            <TabsTrigger value="status" className={activeTab === "status" ? colors.highlight : ""}>
+              Estado
             </TabsTrigger>
           </TabsList>
 
@@ -226,11 +242,7 @@ export default function ChatbotPage() {
               {conversation.map((message, messageIndex) => (
                 <div key={messageIndex} className="space-y-8">
                   <div className="flex justify-end">
-                    <div
-                      className="bg-[#4361EE] p-3 rounded-lg max-w-[80%] shadow-sm text-white"
-                    >
-                      {message.prompt}
-                    </div>
+                    <div className="bg-[#4361EE] p-3 rounded-lg max-w-[80%] shadow-sm text-white">{message.prompt}</div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -250,9 +262,16 @@ export default function ChatbotPage() {
                       >
                         <div className="h-full overflow-auto">
                           <p>{response}</p>
-                          <div className="mt-4 pt-2 border-t text-xs opacity-70">
-                            Respuesta {responseIndex + 1}
-                          </div>
+                          <div className="mt-4 pt-2 border-t text-xs opacity-70">Respuesta {responseIndex + 1}</div>
+
+                          {/* Mostrar métricas si están disponibles y la respuesta está seleccionada */}
+                          {message.selectedResponse === responseIndex &&
+                            message.modelResults &&
+                            message.modelResults[responseIndex] && (
+                              <div className="mt-2 text-xs opacity-70">
+                                <div>Tiempo: {message.modelResults[responseIndex].total_duration}ms</div>
+                              </div>
+                            )}
                         </div>
                       </Card>
                     ))}
@@ -296,8 +315,8 @@ export default function ChatbotPage() {
             <SuggestedQuestions onSelectQuestion={handleUseQuestion} colors={colors} />
           </TabsContent>
 
-          <TabsContent value="models" className="flex-1 overflow-y-auto">
-            <ModelStatus />
+          <TabsContent value="status" className="flex-1 overflow-y-auto">
+            <BackendStatus />
           </TabsContent>
         </Tabs>
       </main>
@@ -328,3 +347,4 @@ export default function ChatbotPage() {
     </div>
   )
 }
+
