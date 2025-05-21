@@ -7,12 +7,19 @@ import { AlertCircle, CheckCircle } from "lucide-react"
 import { pingBackend } from "@/lib/backend-client"
 import { BACKEND_URL } from "@/config"
 
+interface ModelInfo {
+  name: string
+  displayName: string
+  isAvailable: boolean
+}
+
 export function BackendStatus() {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastChecked, setLastChecked] = useState<string>("")
   const [pingCount, setPingCount] = useState(0)
   const [lastPingStatus, setLastPingStatus] = useState<string>("")
+  const [models, setModels] = useState<ModelInfo[]>([])
 
   useEffect(() => {
     async function checkBackend() {
@@ -23,6 +30,19 @@ export function BackendStatus() {
         setLastChecked(new Date().toLocaleTimeString())
         setPingCount((prev) => prev + 1)
         setLastPingStatus(available ? "Exitoso" : "Fallido")
+
+        // Si el backend está disponible, obtener información de los modelos
+        if (available) {
+          try {
+            const response = await fetch("/api/models")
+            if (response.ok) {
+              const data = await response.json()
+              setModels(data.models)
+            }
+          } catch (modelError) {
+            console.error("Error al obtener información de modelos:", modelError)
+          }
+        }
       } catch (err) {
         setIsAvailable(false)
         setLastChecked(new Date().toLocaleTimeString())
@@ -49,6 +69,19 @@ export function BackendStatus() {
       setLastChecked(new Date().toLocaleTimeString())
       setPingCount((prev) => prev + 1)
       setLastPingStatus(available ? "Exitoso" : "Fallido")
+
+      // Si el backend está disponible, obtener información de los modelos
+      if (available) {
+        try {
+          const response = await fetch("/api/models")
+          if (response.ok) {
+            const data = await response.json()
+            setModels(data.models)
+          }
+        } catch (modelError) {
+          console.error("Error al obtener información de modelos:", modelError)
+        }
+      }
     } catch (err) {
       setIsAvailable(false)
       setLastChecked(new Date().toLocaleTimeString())
@@ -95,6 +128,35 @@ export function BackendStatus() {
         <div>Estado del último ping: {lastPingStatus}</div>
       </div>
 
+      {/* Mostrar estado de los modelos */}
+      {isAvailable && models.length > 0 && (
+        <div className="mb-4">
+          <h4 className="font-medium mb-2 text-sm">Modelos disponibles:</h4>
+          <div className="space-y-2">
+            {models.map((model) => (
+              <div key={model.name} className="flex items-center justify-between">
+                <span className="text-xs">{model.displayName}</span>
+                <Badge variant={model.isAvailable ? "success" : "destructive"} className="text-xs">
+                  <span className="flex items-center gap-1">
+                    {model.isAvailable ? (
+                      <>
+                        <CheckCircle size={10} />
+                        Disponible
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle size={10} />
+                        No disponible
+                      </>
+                    )}
+                  </span>
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-center">
         <button
           onClick={handleManualCheck}
@@ -124,4 +186,3 @@ export function BackendStatus() {
     </Card>
   )
 }
-

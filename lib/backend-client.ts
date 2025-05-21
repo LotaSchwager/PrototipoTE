@@ -3,6 +3,7 @@
  */
 
 import { BACKEND_URL } from "@/config"
+import { logger } from "@/utils/logger"
 
 // Actualización de la interfaz para reflejar el nuevo formato de respuesta del modelo
 export interface ModelResult {
@@ -34,14 +35,14 @@ export interface PingResponse {
  */
 export async function pingBackend(): Promise<boolean> {
   try {
-    console.log("Intentando ping a:", `${BACKEND_URL}/ping`)
+    logger.debug("Intentando ping a:", `${BACKEND_URL}/ping`)
 
     const response = await fetch(`${BACKEND_URL}/ping`, {
       // Evitar caché para obtener siempre el estado actual
       cache: "no-store",
     })
 
-    console.log("Respuesta de ping:", response)
+    logger.debug("Respuesta de ping:", response)
 
     // Si la respuesta es ok (status 200-299), consideramos que el backend está disponible
     // independientemente del formato del cuerpo
@@ -49,37 +50,37 @@ export async function pingBackend(): Promise<boolean> {
       try {
         // Intentamos parsear el JSON, pero no fallamos si no es posible
         const textResponse = await response.text()
-        console.log("Respuesta de texto:", textResponse)
+        logger.debug("Respuesta de texto:", textResponse)
 
         try {
           // Intentar parsear como JSON
           const jsonData = JSON.parse(textResponse)
-          console.log("Respuesta JSON:", jsonData)
+          logger.debug("Respuesta JSON:", jsonData)
 
           // Si tiene el formato esperado, verificamos los valores
           if (jsonData && typeof jsonData === "object") {
             if (jsonData.status === 200 && jsonData.content === "pong") {
-              console.log("Ping exitoso con formato correcto")
+              logger.debug("Ping exitoso con formato correcto")
             } else {
-              console.log("Ping exitoso pero con formato diferente al esperado")
+              logger.debug("Ping exitoso pero con formato diferente al esperado")
             }
           }
         } catch (jsonError) {
-          console.log("La respuesta no es JSON válido, pero el ping fue exitoso")
+          logger.debug("La respuesta no es JSON válido, pero el ping fue exitoso")
         }
       } catch (textError) {
-        console.log("No se pudo leer el cuerpo de la respuesta, pero el ping fue exitoso")
+        logger.debug("No se pudo leer el cuerpo de la respuesta, pero el ping fue exitoso")
       }
 
       // Si la respuesta es ok, consideramos que el backend está disponible
       // independientemente del formato del cuerpo
       return true
     } else {
-      console.error("Ping fallido: respuesta no ok", response.status, response.statusText)
+      logger.error("Ping fallido: respuesta no ok", response.status, response.statusText)
       return false
     }
   } catch (error) {
-    console.error("Error al verificar disponibilidad del backend:", error)
+    logger.error("Error al verificar disponibilidad del backend:", error)
     return false
   }
 }
@@ -113,7 +114,7 @@ export async function generateWithBackend(prompt: string): Promise<string[]> {
       return modelResult.message || `No se recibió respuesta del modelo ${modelResult.model}`
     })
   } catch (error) {
-    console.error("Error al generar respuestas con el backend:", error)
+    logger.error("Error al generar respuestas con el backend:", error)
     return [
       "Error al comunicarse con el backend. Por favor, verifica que el servidor esté en funcionamiento.",
       "Error al comunicarse con el backend. Por favor, verifica que el servidor esté en funcionamiento.",
@@ -137,7 +138,8 @@ export async function exportToBackend(data: any): Promise<boolean> {
 
     return response.ok
   } catch (error) {
-    console.error("Error al exportar datos al backend:", error)
+    logger.error("Error al exportar datos al backend:", error)
     return false
   }
 }
+
