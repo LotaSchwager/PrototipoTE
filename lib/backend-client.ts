@@ -97,6 +97,7 @@ export async function pingBackend(): Promise<boolean> {
  */
 export async function generateWithBackend(
   prompt: string,
+  email: string
 ): Promise<{ responses: string[]; modelResults: ModelResult[] }> {
   try {
     logger.debug("Generando respuestas para prompt:", prompt)
@@ -106,7 +107,7 @@ export async function generateWithBackend(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, email }),
     })
 
     if (!response.ok) {

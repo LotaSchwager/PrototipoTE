@@ -4,10 +4,10 @@ import { generateWithBackend, type ModelResult } from "./backend-client"
  * Genera respuestas para un prompt usando el backend
  * Ahora retorna tanto las respuestas como los datos completos de los modelos (incluyendo IDs)
  */
-export async function generateResponses(prompt: string): Promise<{ responses: string[]; modelResults: ModelResult[] }> {
+export async function generateResponses(prompt: string, email: string): Promise<{ responses: string[]; modelResults: ModelResult[] }> {
   try {
     // Obtener respuestas y datos de modelos del backend
-    const result = await generateWithBackend(prompt)
+    const result = await generateWithBackend(prompt, email)
     return result
   } catch (error) {
     console.error("Error al generar respuestas:", error)
