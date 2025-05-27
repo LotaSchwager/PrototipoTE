@@ -1,28 +1,26 @@
-/**
- * Cliente para interactuar con el backend
- */
-
-import { BACKEND_URL } from "@/config"
 import { logger } from "@/utils/logger"
 
-// Actualización de la interfaz para reflejar el nuevo formato de respuesta del modelo
+// Nueva estructura de respuesta del modelo con ID
 export interface ModelResult {
   model: string
-  created_at?: string
-  message?: string
-  done?: boolean
-  total_duration?: number
-  load_duration?: number
-  prompt_eval_count?: number
-  prompt_eval_duration?: number
-  eval_count?: number
-  eval_duration?: number
+  response?: string
   error?: string
+  id?: number
 }
 
-export interface BackendResponse {
+// Nueva estructura de respuesta múltiple
+export interface MultiResponse {
   status: number
   responses: ModelResult[]
+}
+
+// Estructura para enviar el resultado seleccionado
+export interface Resultado {
+  prompt: string
+  respuesta_id_1: number
+  respuesta_id_2: number
+  respuesta_id_3: number
+  respuesta_elegida_id: number
 }
 
 export interface PingResponse {
@@ -35,52 +33,61 @@ export interface PingResponse {
  */
 export async function pingBackend(): Promise<boolean> {
   try {
-    logger.debug("Intentando ping a:", `${BACKEND_URL}/ping`)
+    logger.debug("Haciendo ping al backend a través de /api/ping")
 
-    const response = await fetch(`${BACKEND_URL}/ping`, {
-      // Evitar caché para obtener siempre el estado actual
+    const response = await fetch("/api/ping", {
+      method: "GET",
       cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
 
-    logger.debug("Respuesta de ping:", response)
+    logger.debug("Respuesta de ping:", response.status, response.statusText)
 
-    // Si la respuesta es ok (status 200-299), consideramos que el backend está disponible
-    // independientemente del formato del cuerpo
     if (response.ok) {
       try {
-        // Intentamos parsear el JSON, pero no fallamos si no es posible
         const textResponse = await response.text()
         logger.debug("Respuesta de texto:", textResponse)
 
         try {
-          // Intentar parsear como JSON
           const jsonData = JSON.parse(textResponse)
           logger.debug("Respuesta JSON:", jsonData)
 
-          // Si tiene el formato esperado, verificamos los valores
           if (jsonData && typeof jsonData === "object") {
             if (jsonData.status === 200 && jsonData.content === "pong") {
               logger.debug("Ping exitoso con formato correcto")
+              return true
             } else {
               logger.debug("Ping exitoso pero con formato diferente al esperado")
+              return true
             }
           }
         } catch (jsonError) {
           logger.debug("La respuesta no es JSON válido, pero el ping fue exitoso")
+          return true
         }
       } catch (textError) {
         logger.debug("No se pudo leer el cuerpo de la respuesta, pero el ping fue exitoso")
+        return true
       }
 
-      // Si la respuesta es ok, consideramos que el backend está disponible
-      // independientemente del formato del cuerpo
       return true
     } else {
-      logger.error("Ping fallido: respuesta no ok", response.status, response.statusText)
+      try {
+        const errorText = await response.text()
+        logger.error("Ping fallido:", response.status, response.statusText, errorText)
+      } catch (e) {
+        logger.error("Ping fallido:", response.status, response.statusText)
+      }
       return false
     }
   } catch (error) {
-    logger.error("Error al verificar disponibilidad del backend:", error)
+    if (error instanceof Error) {
+      logger.error("Error al verificar disponibilidad del backend:", error.message)
+    } else {
+      logger.error("Error desconocido al verificar disponibilidad del backend:", error)
+    }
     return false
   }
 }
@@ -88,9 +95,13 @@ export async function pingBackend(): Promise<boolean> {
 /**
  * Genera respuestas para un prompt usando el backend
  */
-export async function generateWithBackend(prompt: string): Promise<string[]> {
+export async function generateWithBackend(
+  prompt: string,
+): Promise<{ responses: string[]; modelResults: ModelResult[] }> {
   try {
-    const response = await fetch(`${BACKEND_URL}/generate`, {
+    logger.debug("Generando respuestas para prompt:", prompt)
+
+    const response = await fetch("/api/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,47 +110,99 @@ export async function generateWithBackend(prompt: string): Promise<string[]> {
     })
 
     if (!response.ok) {
-      throw new Error(`Error en el backend: ${response.status} ${response.statusText}`)
+      let errorMessage = `Error en el backend: ${response.status} ${response.statusText}`
+
+      if (response.status === 502) {
+        try {
+          const errorData = await response.json()
+          errorMessage = `Error de conexión: ${errorData.message || errorData.error}`
+        } catch (e) {
+          errorMessage = "Error de conexión con el backend"
+        }
+      }
+
+      throw new Error(errorMessage)
     }
 
-    const data = (await response.json()) as BackendResponse
+    const data = (await response.json()) as MultiResponse
 
     // Extraer las respuestas de los modelos
-    return data.responses.map((modelResult) => {
-      // Si hay un error, devolver el mensaje de error
+    const responses = data.responses.map((modelResult) => {
       if (modelResult.error) {
         return `Error del modelo ${modelResult.model}: ${modelResult.error}`
       }
-      // Si no hay error, devolver el contenido del mensaje
-      return modelResult.message || `No se recibió respuesta del modelo ${modelResult.model}`
+      return modelResult.response || `No se recibió respuesta del modelo ${modelResult.model}`
     })
+
+    return {
+      responses,
+      modelResults: data.responses,
+    }
   } catch (error) {
-    logger.error("Error al generar respuestas con el backend:", error)
-    return [
+    if (error instanceof Error) {
+      logger.error("Error al generar respuestas con el backend:", error.message)
+    } else {
+      logger.error("Error desconocido al generar respuestas:", error)
+    }
+
+    const errorResponses = [
       "Error al comunicarse con el backend. Por favor, verifica que el servidor esté en funcionamiento.",
       "Error al comunicarse con el backend. Por favor, verifica que el servidor esté en funcionamiento.",
       "Error al comunicarse con el backend. Por favor, verifica que el servidor esté en funcionamiento.",
     ]
+
+    const errorModelResults: ModelResult[] = [
+      { model: "modelo1", error: "Error de conexión", id: -1 },
+      { model: "modelo2", error: "Error de conexión", id: -2 },
+      { model: "modelo3", error: "Error de conexión", id: -3 },
+    ]
+
+    return {
+      responses: errorResponses,
+      modelResults: errorModelResults,
+    }
   }
 }
 
 /**
- * Exporta la conversación al backend
+ * Guarda el resultado seleccionado en el backend
  */
-export async function exportToBackend(data: any): Promise<boolean> {
+export async function saveResultToBackend(resultado: Resultado): Promise<boolean> {
   try {
-    const response = await fetch(`${BACKEND_URL}/excel`, {
+    logger.debug("Enviando resultado al backend:", resultado)
+
+    const response = await fetch("/api/save-result", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(resultado),
     })
 
-    return response.ok
+    if (response.ok) {
+      logger.debug("Resultado guardado exitosamente")
+      return true
+    } else {
+      let errorMessage = `Error al guardar: ${response.status} ${response.statusText}`
+
+      if (response.status === 502) {
+        try {
+          const errorData = await response.json()
+          errorMessage = `Error de conexión: ${errorData.message || errorData.error}`
+        } catch (e) {
+          errorMessage = "Error de conexión con el backend"
+        }
+      }
+
+      logger.error(errorMessage)
+      return false
+    }
   } catch (error) {
-    logger.error("Error al exportar datos al backend:", error)
+    if (error instanceof Error) {
+      logger.error("Error al guardar resultado en el backend:", error.message)
+    } else {
+      logger.error("Error desconocido al guardar resultado:", error)
+    }
     return false
   }
 }
-

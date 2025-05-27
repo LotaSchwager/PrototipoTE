@@ -8,34 +8,18 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { generateResponses } from "@/lib/generate-responses"
-import { exportConversation } from "@/lib/export-conversation"
+import { saveResultToBackend, type ModelResult, type Resultado } from "@/lib/backend-client"
 import { PUCVLogo } from "@/components/pucv-logo"
 import { SuggestedQuestions } from "@/components/suggested-questions"
 import { BackendStatus } from "@/components/backend-status"
-import type { ModelResult } from "@/lib/backend-client"
-
-interface ResponseOption {
-  modelo: string
-  seleccionado: boolean
-  // Campos adicionales para métricas
-  created_at?: string
-  total_duration?: number
-  load_duration?: number
-  prompt_eval_count?: number
-  prompt_eval_duration?: number
-  eval_count?: number
-  eval_duration?: number
-}
 
 interface Message {
   prompt: string
   responses: string[]
   tempSelectedResponse?: number
   selectedResponse?: number
-  responseData?: {
-    [key: string]: ResponseOption
-  }
-  // Almacenar los datos completos de los modelos para exportación
+  isConfirmed?: boolean
+  // Almacenar los datos completos de los modelos para obtener los IDs
   modelResults?: ModelResult[]
 }
 
@@ -43,17 +27,10 @@ export default function ChatbotPage() {
   const [prompt, setPrompt] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [conversation, setConversation] = useState<Message[]>([])
-  const [canExport, setCanExport] = useState(false)
-  const [hasExported, setHasExported] = useState(false)
   const [activeTab, setActiveTab] = useState("chat")
+  const [isSaving, setIsSaving] = useState<{ [key: number]: boolean }>({})
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const theme = "light" // Siempre modo claro
-
-  // Check if export is possible (5+ complete Q&A)
-  useEffect(() => {
-    const completedExchanges = conversation.filter((msg) => msg.selectedResponse !== undefined).length
-    setCanExport(completedExchanges >= 5)
-  }, [conversation])
 
   // Scroll to bottom when new messages are added
   useEffect(() => {
@@ -73,40 +50,18 @@ export default function ChatbotPage() {
 
     setIsLoading(true)
     try {
-      // Obtener las respuestas del backend
-      const responses = await generateResponses(prompt)
-
-      // Obtener los datos completos de los modelos (simulado por ahora)
-      // En una implementación real, estos datos vendrían del backend
-      const modelResults: ModelResult[] = [
-        {
-          model: "llama3.2",
-          message: responses[0],
-          total_duration: Math.floor(Math.random() * 5000),
-          error: responses[0].includes("Error") ? "Error simulado" : "",
-        },
-        {
-          model: "phi3.5",
-          message: responses[1],
-          total_duration: Math.floor(Math.random() * 5000),
-          error: responses[1].includes("Error") ? "Error simulado" : "",
-        },
-        {
-          model: "qwen2.5",
-          message: responses[2],
-          total_duration: Math.floor(Math.random() * 5000),
-          error: responses[2].includes("Error") ? "Error simulado" : "",
-        },
-      ]
+      // Obtener las respuestas y los datos completos de los modelos del backend
+      const result = await generateResponses(prompt)
 
       setConversation([
         ...conversation,
         {
           prompt,
-          responses,
+          responses: result.responses,
           tempSelectedResponse: undefined,
           selectedResponse: undefined,
-          modelResults, // Guardar los datos completos para exportación
+          isConfirmed: false,
+          modelResults: result.modelResults, // Guardar los datos completos incluyendo IDs
         },
       ])
       setPrompt("")
@@ -120,65 +75,73 @@ export default function ChatbotPage() {
   const handleTempSelectResponse = (messageIndex: number, responseIndex: number) => {
     const updatedConversation = [...conversation]
     // Only allow selection if not already confirmed
-    if (updatedConversation[messageIndex].selectedResponse === undefined) {
+    if (!updatedConversation[messageIndex].isConfirmed) {
       updatedConversation[messageIndex].tempSelectedResponse = responseIndex
       setConversation(updatedConversation)
     }
   }
 
-  const handleConfirmSelection = (messageIndex: number) => {
+  const handleConfirmSelection = async (messageIndex: number) => {
     const updatedConversation = [...conversation]
     const message = updatedConversation[messageIndex]
 
     // Only confirm if there's a temporary selection and not already confirmed
-    if (message.tempSelectedResponse !== undefined && message.selectedResponse === undefined) {
+    if (message.tempSelectedResponse !== undefined && !message.isConfirmed && message.modelResults) {
       const selectedIndex = message.tempSelectedResponse
 
-      // Create the response data structure
-      const responseData: { [key: string]: ResponseOption } = {}
-
-      // Usar los datos de los modelos si están disponibles
-      const modelResults = message.modelResults || []
-
-      message.responses.forEach((_, index) => {
-        const modelResult = modelResults[index] || { model: `modelo${index + 1}` }
-
-        responseData[`opcion ${index + 1}`] = {
-          modelo: modelResult.model,
-          seleccionado: index === selectedIndex,
-          // Incluir métricas adicionales si están disponibles
-          created_at: modelResult.created_at,
-          total_duration: modelResult.total_duration,
-          load_duration: modelResult.load_duration,
-          prompt_eval_count: modelResult.prompt_eval_count,
-          prompt_eval_duration: modelResult.prompt_eval_duration,
-          eval_count: modelResult.eval_count,
-          eval_duration: modelResult.eval_duration,
+      // Verificar que tenemos los IDs necesarios
+      if (
+        message.modelResults.length >= 3 &&
+        message.modelResults[0].id !== undefined &&
+        message.modelResults[1].id !== undefined &&
+        message.modelResults[2].id !== undefined &&
+        message.modelResults[selectedIndex].id !== undefined
+      ) {
+        // Preparar los datos para enviar al backend
+        const resultado: Resultado = {
+          prompt: message.prompt,
+          respuesta_id_1: message.modelResults[0].id!,
+          respuesta_id_2: message.modelResults[1].id!,
+          respuesta_id_3: message.modelResults[2].id!,
+          respuesta_elegida_id: message.modelResults[selectedIndex].id!,
         }
-      })
 
-      // Update the message with confirmed selection and data
-      message.selectedResponse = selectedIndex
-      message.responseData = responseData
+        // Indicar que estamos guardando este mensaje específico
+        setIsSaving((prev) => ({ ...prev, [messageIndex]: true }))
 
-      setConversation(updatedConversation)
+        try {
+          // Enviar al backend
+          const success = await saveResultToBackend(resultado)
 
-      // Log the response data for debugging
-      console.log("Selección confirmada:", responseData)
+          if (success) {
+            // Update the message with confirmed selection
+            message.selectedResponse = selectedIndex
+            message.isConfirmed = true
+            setConversation(updatedConversation)
+
+            console.log("Resultado guardado exitosamente:", resultado)
+          } else {
+            alert("Error al guardar la selección. Por favor, intenta de nuevo.")
+          }
+        } catch (error) {
+          console.error("Error al confirmar selección:", error)
+          alert("Error al guardar la selección. Por favor, intenta de nuevo.")
+        } finally {
+          setIsSaving((prev) => ({ ...prev, [messageIndex]: false }))
+        }
+      } else {
+        alert(
+          "Error: No se pudieron obtener los IDs de las respuestas. Por favor, intenta generar las respuestas de nuevo.",
+        )
+        console.error("IDs faltantes en modelResults:", message.modelResults)
+      }
     }
   }
 
-  const handleExport = async () => {
-    if (!canExport) return
-    await exportConversation(conversation)
-    setHasExported(true)
-  }
-
   const handleReset = () => {
-    if (!hasExported) return
     setConversation([])
     setPrompt("")
-    setHasExported(false)
+    setIsSaving({})
   }
 
   const handleUseQuestion = (question: string) => {
@@ -211,12 +174,7 @@ export default function ChatbotPage() {
       <header className="p-2 flex justify-between items-center border-b shrink-0">
         <PUCVLogo />
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className={`rounded-full ${colors.card} ${colors.text} ${!hasExported ? "opacity-50 cursor-not-allowed" : ""}`}
-            onClick={handleReset}
-            disabled={!hasExported}
-          >
+          <Button variant="outline" className={`rounded-full ${colors.card} ${colors.text}`} onClick={handleReset}>
             Reset
           </Button>
         </div>
@@ -250,7 +208,7 @@ export default function ChatbotPage() {
                       <Card
                         key={responseIndex}
                         className={`p-4 rounded-xl cursor-pointer overflow-hidden shadow-md transition-colors ${
-                          message.selectedResponse !== undefined
+                          message.isConfirmed
                             ? message.selectedResponse === responseIndex
                               ? `border-4 ${colors.selected}`
                               : `border-4 ${colors.notSelected} opacity-70`
@@ -262,16 +220,20 @@ export default function ChatbotPage() {
                       >
                         <div className="h-full overflow-auto">
                           <p>{response}</p>
-                          <div className="mt-4 pt-2 border-t text-xs opacity-70">Respuesta {responseIndex + 1}</div>
-
-                          {/* Mostrar métricas si están disponibles y la respuesta está seleccionada */}
-                          {message.selectedResponse === responseIndex &&
-                            message.modelResults &&
-                            message.modelResults[responseIndex] && (
-                              <div className="mt-2 text-xs opacity-70">
-                                <div>Tiempo: {message.modelResults[responseIndex].total_duration}ms</div>
-                              </div>
+                          <div className="mt-4 pt-2 border-t text-xs opacity-70">
+                            Respuesta {responseIndex + 1}
+                            {/* Mostrar el ID si está disponible y en modo debug */}
+                            {message.modelResults && message.modelResults[responseIndex]?.id && (
+                              <span className="ml-2">(ID: {message.modelResults[responseIndex].id})</span>
                             )}
+                          </div>
+
+                          {/* Mostrar información del modelo si está disponible */}
+                          {message.modelResults && message.modelResults[responseIndex] && (
+                            <div className="mt-2 text-xs opacity-70">
+                              <div>Modelo: {message.modelResults[responseIndex].model}</div>
+                            </div>
+                          )}
                         </div>
                       </Card>
                     ))}
@@ -280,12 +242,18 @@ export default function ChatbotPage() {
                   <div className="flex justify-center">
                     <Button
                       onClick={() => handleConfirmSelection(messageIndex)}
-                      disabled={message.tempSelectedResponse === undefined || message.selectedResponse !== undefined}
+                      disabled={
+                        message.tempSelectedResponse === undefined || message.isConfirmed || isSaving[messageIndex]
+                      }
                       className={`${
-                        message.selectedResponse !== undefined ? "bg-green-500 hover:bg-green-600" : `${colors.button}`
+                        message.isConfirmed ? "bg-green-500 hover:bg-green-600" : `${colors.button}`
                       } ${colors.buttonText}`}
                     >
-                      {message.selectedResponse !== undefined ? "Selección Confirmada" : "Confirmar Selección"}
+                      {isSaving[messageIndex]
+                        ? "Guardando..."
+                        : message.isConfirmed
+                          ? "Selección Guardada"
+                          : "Confirmar Selección"}
                     </Button>
                   </div>
                 </div>
@@ -321,12 +289,8 @@ export default function ChatbotPage() {
         </Tabs>
       </main>
 
-      {/* Footer fijo */}
+      {/* Footer fijo - Sin botón de exportar */}
       <footer className={`p-2 flex items-center gap-4 ${colors.bg} border-t shrink-0`}>
-        <Button onClick={handleExport} disabled={!canExport} className={`${colors.card} text-black hover:bg-gray-100`}>
-          Exportar datos
-        </Button>
-
         <form onSubmit={handleSubmit} className="flex-1 flex gap-2">
           <Input
             value={prompt}
