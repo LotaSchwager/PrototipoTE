@@ -4,13 +4,11 @@
 const isDevelopment = process.env.NODE_ENV === "development"
 const isProduction = process.env.NODE_ENV === "production"
 
-
 // URL base del backend
-<<<<<<< HEAD
 // En desarrollo: localhost
 // En producción: VM de Google Cloud
 export const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || (isDevelopment ? "http://localhost:8080" : "http://35.225.42.158:8080")
+  process.env.NEXT_PUBLIC_BACKEND_URL || (isDevelopment ? "http://localhost:8080" : "http://34.30.74.112:8080")
 
 // Información de depuración
 export const DEBUG = {
@@ -36,6 +34,3 @@ if (DEBUG.ENABLED) {
     isProduction,
   })
 }
-=======
-export const BACKEND_URL = "http://104.197.91.136:8080"
->>>>>>> cf0ce7f7620029a76a2d95f2ccfa8cbbef02b7a5
