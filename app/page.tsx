@@ -169,7 +169,7 @@ export default function ChatbotPage() {
   const colors = getThemeColors()
 
   return (
-    <div className={`flex flex-col h-screen ${colors.bg} ${colors.text} overflow-hidden`}>
+    <div className={`flex flex-col h-dvh ${colors.bg} ${colors.text} overflow-hidden`}>
       {/* Header fijo */}
       <header className="p-2 flex justify-between items-center border-b shrink-0">
         <PUCVLogo />
