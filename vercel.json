@@ -1,13 +1,13 @@
 {
   "functions": {
     "app/api/ping/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 30
     },
     "app/api/generate/route.ts": {
-      "maxDuration": 600
+      "maxDuration": 120
     },
     "app/api/save-result/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 30
     }
   }
 }
