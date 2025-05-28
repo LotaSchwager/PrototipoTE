@@ -15,14 +15,22 @@ interface SuggestedQuestionsProps {
 
 export function SuggestedQuestions({ onSelectQuestion, colors }: SuggestedQuestionsProps) {
   const questions = [
-    "¿Cuáles son las principales áreas de investigación de la PUCV?",
-    "¿Cómo puedo postular a un programa de postgrado?",
-    "¿Qué becas están disponibles para estudiantes internacionales?",
-    "¿Cuáles son los requisitos para ingresar a la carrera de Ingeniería?",
-    "¿Qué actividades extracurriculares ofrece la universidad?",
-    "¿Cómo funciona el proceso de intercambio estudiantil?",
-    "¿Cuáles son las fechas importantes del calendario académico?",
-    "¿Qué servicios de biblioteca ofrece la universidad?",
+    "¿Cuál es la asistencia mínima requerida para los estudiantes de los primeros cuatro semestres?",
+    "¿Qué pasa si un estudiante no justifica su inasistencia a una evaluación?",
+    "¿Cuál es el plazo máximo para justificar una inasistencia?",
+    "¿Cuál es el objetivo de la asignatura Seminario de Título?",
+    "¿Cuál es el objetivo de la asignatura Proyecto de Título?",
+    "¿Dónde puedo encontrar los formularios de preinscripción correspondiente a las asignaturas Seminario de Título y Proyecto de Título?",
+    "¿Quiénes son los profesores guía de seminario y proyecto de título?",
+    "¿Cuántas horas debe durar la práctica profesional?",
+    "¿Dónde se puede realizar la práctica profesional?",
+    "¿Cómo se inscribe una práctica profesional?",
+    "¿Qué es la Unidad de Apoyo Estudiantil?",
+    "¿Cómo puedo contactar a la Unidad de Apoyo Estudiantil?",
+    "¿Cómo se puede acceder a la atención psicoeducativa?",
+    "¿Dónde se hace la preinscripción de asignaturas?",
+    "¿Cuándo se hace la preinscripción de asignaturas?",
+    "¿Cuándo se hace la desinscripción de asignaturas?"
   ]
 
   return (
