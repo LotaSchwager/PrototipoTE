@@ -191,7 +191,7 @@ export default function ChatbotPage({email}: { email: string }) {
             <TabsTrigger value="questions" className={activeTab === "questions" ? colors.highlight : ""}>
               Preguntas Sugeridas
             </TabsTrigger>
-            <TabsTrigger value="status" className={activeTab === "status" ? colors.highlight : ""}>
+            <TabsTrigger value="status" className={`${activeTab === "status" ? colors.highlight : ""} ${email === process.env.NEXT_PUBLIC_ADMIN_EMAIL ? '' : 'hidden'}`}>
               Estado
             </TabsTrigger>
           </TabsList>
