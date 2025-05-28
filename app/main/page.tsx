@@ -195,7 +195,7 @@ export default function ChatbotPage({email}: { email: string }) {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="chat" className="flex-1 overflow-hidden flex flex-col">
+          <TabsContent value="chat" className={`flex-1 overflow-hidden ${activeTab === 'chat' ? 'flex' : 'hidden' } flex-col`}>
             <div ref={chatContainerRef} className="flex-1 flex flex-col space-y-16 overflow-y-auto pr-2">
               {conversation.map((message, messageIndex) => (
                 <div key={messageIndex} className="space-y-8">
