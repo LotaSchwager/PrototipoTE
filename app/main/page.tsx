@@ -224,13 +224,13 @@ export default function ChatbotPage({email}: { email: string }) {
                           <div className="mt-4 pt-2 border-t text-xs opacity-70">
                             Respuesta {responseIndex + 1}
                             {/* Mostrar el ID si está disponible y en modo debug */}
-                            {message.modelResults && message.modelResults[responseIndex]?.id && (
+                            {message.modelResults && message.modelResults[responseIndex]?.id && email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
                               <span className="ml-2">(ID: {message.modelResults[responseIndex].id})</span>
                             )}
                           </div>
 
                           {/* Mostrar información del modelo si está disponible */}
-                          {message.modelResults && message.modelResults[responseIndex] && (
+                          {message.modelResults && message.modelResults[responseIndex] && email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
                             <div className="mt-2 text-xs opacity-70">
                               <div>Modelo: {message.modelResults[responseIndex].model}</div>
                             </div>
