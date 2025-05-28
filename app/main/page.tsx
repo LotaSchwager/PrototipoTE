@@ -12,6 +12,7 @@ import { saveResultToBackend, type ModelResult, type Resultado } from "@/lib/bac
 import { PUCVLogo } from "@/components/pucv-logo"
 import { SuggestedQuestions } from "@/components/suggested-questions"
 import { BackendStatus } from "@/components/backend-status"
+import Markdown from 'react-markdown'
 
 interface Message {
   prompt: string
@@ -219,7 +220,7 @@ export default function ChatbotPage({email}: { email: string }) {
                         onClick={() => handleTempSelectResponse(messageIndex, responseIndex)}
                       >
                         <div className="h-full overflow-auto">
-                          <p>{response}</p>
+                          <Markdown>{response}</Markdown>
                           <div className="mt-4 pt-2 border-t text-xs opacity-70">
                             Respuesta {responseIndex + 1}
                             {/* Mostrar el ID si está disponible y en modo debug */}
