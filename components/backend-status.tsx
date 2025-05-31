@@ -19,7 +19,7 @@ export function BackendStatus() {
   // Lista estática de modelos (ya que están configurados en el backend)
   const models = [
     { name: "llama3.2", displayName: "Llama 3.2" },
-    { name: "phi3.5", displayName: "Phi 3.5" },
+    { name: "gemma3", displayName: "Gemma 3" },
     { name: "qwen2.5", displayName: "Qwen 2.5" },
   ]
 
