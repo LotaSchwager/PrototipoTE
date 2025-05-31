@@ -8,39 +8,17 @@
  3. Sebastián Yáñez
  4. Jorge Villarreal
 
- # Como utilizar el prototipo
+ # Como utilizar el prototipo online
 
- Primero se debe clonar el repositorio.
+ Se debe acceder al siguiente url para utilizar el prototipo hosteado en vercel.
+ ```shell
+ https://prototipo-te.vercel.app/
+ ```
 
+# Backend
+El prototipo utiliza un backend que esta siendo hosteado en una virtual machine de google cloud.
+
+Codigo del backend esta en el siguiente repositorio
 ```shell
- git clone "https://github.com/LotaSchwager/PrototipoTE.git"
- cd PrototipoTE
-```
-
-Luego instalar las dependencias, es **importante** el ```--force``` debidos a problemas entre algunas versiones.
-
-```shell
-npm install --force
-```
-Tambien es importante instalar [Ollama](https://ollama.com/) e instalar los tres modelos con fine-tunning utilizando Powershell o CMD.
-
-```shell
-ollama pull hf.co/Ainxz/qwen2.5-pucv-gguf
-ollama pull hf.co/Ainxz/llama3.2-pucv-gguf
-ollama pull hf.co/Ainxz/phi3.5-pucv-gguf
-```
-
-Teniendo el prototipo con ```node_modules``` y los modelos instalados con ollama, recien se puede inicializar el prototipo.
-
-Como ejecutar el prototipo en modo dev.
-
-```shell
-npm run dev
-```
-
-Como ejecutar el prototipo modo usuario
-
-```shell
-npm run build
-npm run start
+https://github.com/LotaSchwager/backend-llm-te.git
 ```
